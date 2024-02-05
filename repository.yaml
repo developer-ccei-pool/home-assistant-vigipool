@@ -1,0 +1,4 @@
+# https://developers.home-assistant.io/docs/add-ons/repository#repository-configuration
+name: Vigipool Home Assistant add-on repository
+url: 'https://github.com/developer-ccei-pool/home-assistant-vigipool'
+maintainer: Cyril Canlay <developer@ccei-pool.com>

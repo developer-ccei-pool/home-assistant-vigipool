@@ -1,0 +1,20 @@
+# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-config
+name: Vigipool add-on
+version: "1.2.0"
+slug: vigipool
+description: Vigipool add-on
+url: "https://github.com/home-assistant/addons-vigipool/tree/main/vigipool"
+arch:
+  - armhf
+  - armv7
+  - aarch64
+  - amd64
+  - i386
+init: false
+map:
+  - share:rw
+options:
+  message: "Hello vigipool..."
+schema:
+  message: "str?"
+image: "ghcr.io/home-assistant/{arch}-addon-vigipool"
