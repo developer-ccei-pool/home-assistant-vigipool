@@ -22,6 +22,7 @@ from .const import (
     DEVICE_MODELS,
     VIGIPOOL_TOPIC_REGEX,
 )
+from .mqtt import get_mqtt_client
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -239,7 +240,7 @@ async def async_probe_vigipool_broker(
             loop.call_soon_threadsafe(found_event.set)
 
     client_id = f"vigipool_probe_{int(time.time() * 1000) % 100000}"
-    client = mqtt.Client(client_id=client_id, clean_session=True)
+    client = get_mqtt_client(client_id, clean_session=True)
     client.on_connect = on_connect
     client.on_message = on_message
 

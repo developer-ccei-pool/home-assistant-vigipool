@@ -18,6 +18,19 @@ from .const import DEFAULT_PORT
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_mqtt_client(client_id: str, clean_session: bool = True) -> Any:
+    """Create a paho-mqtt client compatible with both v1 and v2."""
+    if mqtt is None:
+        raise RuntimeError("paho-mqtt is required for Vigipool integration")
+    if hasattr(mqtt, "CallbackAPIVersion"):
+        return mqtt.Client(
+            mqtt.CallbackAPIVersion.VERSION1,
+            client_id=client_id,
+            clean_session=clean_session,
+        )
+    return mqtt.Client(client_id=client_id, clean_session=clean_session)
+
+
 class ConnectionState(str, Enum):
     """MQTT connection state."""
 
@@ -145,7 +158,7 @@ class VigipoolMqttClient:
         self._set_state(ConnectionState.CONNECTING)
 
         client_id = f"vigipool_ha_{random.randint(1000, 9999)}"
-        self._client = mqtt.Client(client_id=client_id, clean_session=True)
+        self._client = get_mqtt_client(client_id, clean_session=True)
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_message = self._on_message

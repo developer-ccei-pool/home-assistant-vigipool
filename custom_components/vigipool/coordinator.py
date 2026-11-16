@@ -23,6 +23,11 @@ from .const import (
 from .discovery import DiscoveredDevice, async_discover_vigipool_brokers
 from .mqtt import ConnectionState, VigipoolMqttClient
 
+try:
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+except ImportError:
+    async_dispatcher_send = lambda *args: None
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -217,10 +222,7 @@ class VigipoolCoordinator:
         # If a new device was discovered, dispatch HA signal to create entities
         if is_new_device:
             signal_name = SIGNAL_VIGIPOOL_NEW_DEVICE.format(self.entry.entry_id)
-            if hasattr(self.hass, "helpers") and hasattr(self.hass.helpers, "dispatcher"):
-                self.hass.helpers.dispatcher.async_dispatcher_send(
-                    self.hass, signal_name, device_id
-                )
+            async_dispatcher_send(self.hass, signal_name, device_id)
 
     def _parse_field_value(
         self, field_name: str, data_type: str, category: str, direction: str, raw: str
