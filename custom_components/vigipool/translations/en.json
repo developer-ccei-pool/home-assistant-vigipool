@@ -1,0 +1,115 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add CCEI Vigipool Equipment",
+        "description": "Choose how you would like to connect to your Vigipool installation.",
+        "data": {
+          "discovery_type": "Connection mode"
+        }
+      },
+      "select": {
+        "title": "Select Vigipool Equipment",
+        "description": "Found {count} Vigipool installation(s) on your local network. Choose the device you want to add:",
+        "data": {
+          "selected_broker": "Discovered Vigipool equipment"
+        }
+      },
+      "no_devices": {
+        "title": "No Vigipool Equipment Found",
+        "description": "No Vigipool device was found on your local network. Ensure your equipment (Tild, Lynx, etc.) is powered on and connected to the same Wi-Fi.",
+        "data": {
+          "action": "Next step"
+        }
+      },
+      "manual": {
+        "title": "Manual IP Configuration",
+        "description": "Enter the IP address of your Vigipool controller or gateway (e.g. Tild, Lynx).",
+        "data": {
+          "broker": "IP Address",
+          "port": "MQTT Port (default 1883)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Vigipool Gateway IP",
+        "description": "Update the IP address of your Vigipool controller if it has changed.",
+        "data": {
+          "broker": "IP Address",
+          "port": "MQTT Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the Vigipool MQTT broker.",
+      "not_vigipool": "Port 1883 is reachable, but the MQTT server does not appear to be a Vigipool device.",
+      "no_devices_found": "No Vigipool devices found during the network scan."
+    },
+    "abort": {
+      "already_configured": "This Vigipool device is already configured in Home Assistant."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Vigipool Options",
+        "description": "Configure background rediscovery and maintenance settings.",
+        "data": {
+          "discovery_interval": "Periodic rediscovery interval in seconds (0 to disable)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_temperature": { "name": "Water Temperature" },
+      "ph_value": { "name": "pH Value" },
+      "orp_value": { "name": "ORP Value" },
+      "rssi": { "name": "Signal Strength" },
+      "injected_volume_24h": { "name": "Injected Volume (24h)" },
+      "total_injected_volume": { "name": "Total Injected Volume" },
+      "power": { "name": "Instant Power" },
+      "voltage": { "name": "Voltage" },
+      "current": { "name": "Current" },
+      "frequency": { "name": "Frequency" },
+      "power_factor": { "name": "Power Factor" },
+      "serial_number": { "name": "Serial Number" },
+      "firmware_version": { "name": "Firmware Version" },
+      "hardware_version": { "name": "Hardware Version" },
+      "light_timer_remaining": { "name": "Light Timer Remaining" },
+      "gateway_connection_state": { "name": "Gateway Connection State" },
+      "device_count": { "name": "Connected Devices Count" },
+      "last_communication": { "name": "Last Communication" }
+    },
+    "binary_sensor": {
+      "water_flow": { "name": "Water Flow" },
+      "injecting_product": { "name": "Product Injection" },
+      "gateway_connectivity": { "name": "Gateway Connectivity" }
+    },
+    "switch": {
+      "filtration": { "name": "Filtration Pump" },
+      "auxiliary": { "name": "Auxiliary Relay" }
+    },
+    "light": {
+      "pool_light": { "name": "Pool Light" },
+      "vigibrio_light": { "name": "VigiBrio Light" }
+    },
+    "number": {
+      "ph_setpoint": { "name": "pH Setpoint" },
+      "orp_setpoint": { "name": "ORP Setpoint" },
+      "max_volume_24h": { "name": "Max Injection Volume (24h)" },
+      "container_volume": { "name": "Product Tank Volume" },
+      "effect_speed": { "name": "Light Effect Speed" }
+    },
+    "select": {
+      "filtration_mode": { "name": "Filtration Mode" },
+      "light_mode": { "name": "Light Mode" },
+      "aux1_mode": { "name": "Auxiliary 1 Mode" },
+      "aux2_mode": { "name": "Auxiliary 2 Mode" },
+      "light_timer_select": { "name": "Light Timer" }
+    },
+    "button": {
+      "reconnect_gateway": { "name": "Reconnect Gateway" },
+      "refresh_data": { "name": "Refresh Devices Data" }
+    }
+  }
+}

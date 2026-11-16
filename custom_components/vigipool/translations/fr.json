@@ -1,0 +1,115 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter un équipement CCEI Vigipool",
+        "description": "Choisissez le mode de connexion à votre installation Vigipool.",
+        "data": {
+          "discovery_type": "Mode de connexion"
+        }
+      },
+      "select": {
+        "title": "Sélectionner un équipement Vigipool",
+        "description": "{count} installation(s) Vigipool détectée(s) sur votre réseau local. Sélectionnez l'équipement à ajouter :",
+        "data": {
+          "selected_broker": "Équipement Vigipool détecté"
+        }
+      },
+      "no_devices": {
+        "title": "Aucun équipement Vigipool détecté",
+        "description": "Aucun équipement Vigipool n'a été trouvé lors du scan réseau. Vérifiez que votre appareil (Tild, Lynx, etc.) est bien allumé et connecté au même réseau Wi-Fi.",
+        "data": {
+          "action": "Action suivante"
+        }
+      },
+      "manual": {
+        "title": "Configuration manuelle de l'adresse IP",
+        "description": "Saisissez l'adresse IP de votre passerelle ou coffret Vigipool (ex : Tild, Lynx).",
+        "data": {
+          "broker": "Adresse IP",
+          "port": "Port MQTT (par défaut 1883)"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigurer l'adresse IP Vigipool",
+        "description": "Mettez à jour l'adresse IP de votre équipement Vigipool si elle a changé.",
+        "data": {
+          "broker": "Adresse IP",
+          "port": "Port MQTT"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion au serveur MQTT Vigipool.",
+      "not_vigipool": "Le port 1883 est ouvert, mais le serveur MQTT ne correspond pas à un équipement Vigipool.",
+      "no_devices_found": "Aucun équipement Vigipool trouvé lors du scan du réseau."
+    },
+    "abort": {
+      "already_configured": "Cet équipement Vigipool est déjà configuré dans Home Assistant."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options Vigipool",
+        "description": "Paramétrez la redécouverte automatique et la maintenance.",
+        "data": {
+          "discovery_interval": "Intervalle de redécouverte périodique en secondes (0 pour désactiver)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_temperature": { "name": "Température de l'eau" },
+      "ph_value": { "name": "Valeur du pH" },
+      "orp_value": { "name": "Valeur ORP / Redox" },
+      "rssi": { "name": "Puissance du signal (RSSI)" },
+      "injected_volume_24h": { "name": "Volume injecté (24h)" },
+      "total_injected_volume": { "name": "Volume total injecté" },
+      "power": { "name": "Puissance instantanée" },
+      "voltage": { "name": "Tension instantanée" },
+      "current": { "name": "Courant instantané" },
+      "frequency": { "name": "Fréquence instantanée" },
+      "power_factor": { "name": "Facteur de puissance" },
+      "serial_number": { "name": "Numéro de série" },
+      "firmware_version": { "name": "Version du firmware" },
+      "hardware_version": { "name": "Version matérielle" },
+      "light_timer_remaining": { "name": "Temps d'éclairage restant" },
+      "gateway_connection_state": { "name": "État de connexion passerelle" },
+      "device_count": { "name": "Nombre d'équipements connectés" },
+      "last_communication": { "name": "Dernière communication" }
+    },
+    "binary_sensor": {
+      "water_flow": { "name": "Débit d'eau" },
+      "injecting_product": { "name": "Injection de produit" },
+      "gateway_connectivity": { "name": "Connectivité passerelle" }
+    },
+    "switch": {
+      "filtration": { "name": "Pompe de filtration" },
+      "auxiliary": { "name": "Sortie auxiliaire" }
+    },
+    "light": {
+      "pool_light": { "name": "Éclairage piscine" },
+      "vigibrio_light": { "name": "Projecteur VigiBrio" }
+    },
+    "number": {
+      "ph_setpoint": { "name": "Consigne pH" },
+      "orp_setpoint": { "name": "Consigne ORP" },
+      "max_volume_24h": { "name": "Volume max injecté (24h)" },
+      "container_volume": { "name": "Volume du bidon / bac" },
+      "effect_speed": { "name": "Vitesse de l'effet d'éclairage" }
+    },
+    "select": {
+      "filtration_mode": { "name": "Mode de filtration" },
+      "light_mode": { "name": "Mode d'éclairage" },
+      "aux1_mode": { "name": "Mode auxiliaire 1" },
+      "aux2_mode": { "name": "Mode auxiliaire 2" },
+      "light_timer_select": { "name": "Minuterie d'éclairage" }
+    },
+    "button": {
+      "reconnect_gateway": { "name": "Reconnexion passerelle" },
+      "refresh_data": { "name": "Rafraîchir les données" }
+    }
+  }
+}
