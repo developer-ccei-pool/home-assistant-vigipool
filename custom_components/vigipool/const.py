@@ -7,32 +7,25 @@ from typing import Final
 DOMAIN: Final = "vigipool"
 MANUFACTURER: Final = "CCEI"
 
-# Configuration keys
 CONF_BROKER: Final = "broker"
 CONF_PORT: Final = "port"
 CONF_PRIMARY_DEVICE_ID: Final = "primary_device_id"
 CONF_DISCOVERY_INTERVAL: Final = "discovery_interval"
 
-# Network & MQTT Defaults
 DEFAULT_PORT: Final = 1883
-DEFAULT_PORT_SCAN_TIMEOUT: Final = 0.8  # seconds for TCP port scan
-DEFAULT_MQTT_PROBE_TIMEOUT: Final = 1.5  # seconds to listen for Vigipool topics
+DEFAULT_PORT_SCAN_TIMEOUT: Final = 1.2
+DEFAULT_HTTP_PROBE_TIMEOUT: Final = 2.0
+DEFAULT_MQTT_PROBE_TIMEOUT: Final = 1.5
 DEFAULT_MAX_CONCURRENT_SCANS: Final = 30
-DEFAULT_DISCOVERY_INTERVAL: Final = 300  # 5 minutes
+DEFAULT_DISCOVERY_INTERVAL: Final = 300
 
-# Regular expression matching Vigipool MQTT topics:
-# Example: tild_84CCA89E2340/u16_r/value_temp/value/reported
-# Group 1: device_type (e.g. tild)
-# Group 2: device_mac (e.g. 84CCA89E2340)
-# Group 3: data_type (e.g. u16_r, u8_w)
-# Group 4: field_name (e.g. value_temp, filt_state)
-# Group 5: category (e.g. value, info, consigne)
-# Group 6: direction (reported, desired)
+# Exact body returned by the HTTP root page of a physical Vigipool device.
+VIGIPOOL_HTTP_SIGNATURE: Final = "File does not exist"
+
 VIGIPOOL_TOPIC_REGEX: Final = re.compile(
     r"^([a-zA-Z0-9]+)_([0-9A-Fa-f]{12})/([a-zA-Z0-9]+_[rw])/([a-zA-Z0-9_]+)/([a-zA-Z0-9_]+)/(reported|desired)$"
 )
 
-# Known Vigipool device models and URLs
 DEVICE_MODELS: Final[dict[str, dict[str, str]]] = {
     "tild": {
         "model": "Tild VP",
@@ -96,38 +89,20 @@ DEVICE_MODELS: Final[dict[str, dict[str, str]]] = {
     },
 }
 
-# Special sentinel error/offline values returned by sensors
 INVALID_RAW_VALUES: Final[set[int]] = {65534, 65535, 0xFFFE, 0xFFFF}
 TEMP_ERROR_THRESHOLD: Final = 65530
 
-# VigiBrio effects
 VIGIBRIO_EFFECT_LIST: Final[list[str]] = [
-    "Rainbow",
-    "Fun",
-    "Ocean",
-    "Flamme",
-    "Parade",
-    "Bleu nuit",
-    "Bleu",
-    "Bleu clair",
-    "Blanc",
-    "Blanc chaud",
-    "Vert",
-    "Jaune",
-    "Orange",
-    "Rouge",
-    "Rose",
-    "Violet",
+    "Rainbow", "Fun", "Ocean", "Flamme", "Parade", "Bleu nuit", "Bleu",
+    "Bleu clair", "Blanc", "Blanc chaud", "Vert", "Jaune", "Orange",
+    "Rouge", "Rose", "Violet",
 ]
 
-# Mode select options for AnteaM
 MODE_OPTIONS_MAP: Final[dict[int, str]] = {
-    0: "OFF",
-    1: "ON",
-    2: "PROG",
-    3: "AUTO",
+    0: "OFF", 1: "ON", 2: "PROG", 3: "AUTO",
 }
-MODE_OPTIONS_REVERSE_MAP: Final[dict[str, int]] = {v: k for k, v in MODE_OPTIONS_MAP.items()}
+MODE_OPTIONS_REVERSE_MAP: Final[dict[str, int]] = {
+    v: k for k, v in MODE_OPTIONS_MAP.items()
+}
 
-# Signals
 SIGNAL_VIGIPOOL_NEW_DEVICE: Final = "vigipool_new_device_{}"

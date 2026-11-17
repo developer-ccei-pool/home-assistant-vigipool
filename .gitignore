@@ -1,57 +1,94 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
 # Virtual environments
-.env
-.venv
-env/
+.venv/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
 
-# Testing & Coverage
-.cache
+# Packaging
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+wheels/
+share/python-wheels/
+develop-eggs/
+lib/
+lib64/
+var/
+*.egg
+*.egg-info/
+.installed.cfg
+
+# Tests and coverage
 .pytest_cache/
+.hypothesis/
+.tox/
+.nox/
+.cache/
 .coverage
 .coverage.*
 htmlcov/
 *.cover
 *.py,cover
-.hypothesis/
+coverage.xml
+junit.xml
 
-# Home Assistant testing
+# Home Assistant local environment
 .ha/
 .homeassistant/
+.storage/
+secrets.yaml
+home-assistant_v2.db
+home-assistant_v2.db-shm
+home-assistant_v2.db-wal
 
-# IDE & Editor files
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+secrets/
+credentials.json
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+.project
+.pydevproject
+
+# Operating systems
 .DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+.directory
+.Trash-*
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+
+# Documentation builds
+site/
+docs/_build/
