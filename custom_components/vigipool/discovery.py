@@ -5,6 +5,7 @@ import asyncio
 from dataclasses import dataclass, field
 import ipaddress
 import logging
+from pathlib import Path
 import socket
 import time
 from typing import Any, Callable
@@ -29,6 +30,12 @@ from .const import (
 from .mqtt import get_mqtt_client
 
 _LOGGER = logging.getLogger(__name__)
+
+# Linux sysfs mount used to distinguish real NICs from virtual interfaces.
+_SYSFS_NET_PATH = Path("/sys/class/net")
+
+# Do not scan networks broader than /20 (Docker/libvirt commonly use /16).
+_MIN_NETWORK_PREFIXLEN = 20
 
 
 @dataclass
@@ -63,8 +70,42 @@ class DiscoveredVigipoolBroker:
         return f"Vigipool ({self.ip}) - {', '.join(device_names)}"
 
 
+@dataclass
+class _InterfaceInfo:
+    """IPv4 information collected for a single network interface."""
+
+    name: str
+    ipv4: list[tuple[str, str]] = field(default_factory=list)
+    is_up: bool | None = None
+
+
+@dataclass
+class _InterfaceDecision:
+    """Result of the interface selection step, kept for diagnostics."""
+
+    name: str
+    included: bool
+    reason: str = ""
+    address: str = ""
+    network: str = ""
+    kind: str = ""
+
+
+# Known virtual/tunnel interface names and the reason attached to each family.
+# This is only a first hint: sysfs (when available) is authoritative.
+_VIRTUAL_NAME_REASONS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("lo", "loop"), "loopback interface"),
+    (
+        ("docker", "veth", "podman", "cni", "br-", "br_"),
+        "virtual container bridge",
+    ),
+    (("virbr",), "libvirt virtual bridge"),
+    (("wg", "tun", "tap", "tailscale", "zt", "ham"), "VPN / tunnel interface"),
+)
+
+
 def _is_virtual_interface(name: str) -> bool:
-    """Return True for interfaces that should not be scanned."""
+    """Return True for well-known virtual, bridge or tunnel interface names."""
     name = name.lower()
     virtual_prefixes = (
         "lo", "docker", "br-", "br_", "veth", "virbr",
@@ -72,6 +113,57 @@ def _is_virtual_interface(name: str) -> bool:
         "zt", "podman", "cni",
     )
     return name.startswith(virtual_prefixes)
+
+
+def _virtual_interface_reason(name: str) -> str:
+    """Explain why an interface name is considered virtual."""
+    lower_name = name.lower()
+    for prefixes, reason in _VIRTUAL_NAME_REASONS:
+        if lower_name.startswith(prefixes):
+            return reason
+    return "virtual interface"
+
+
+def _sysfs_interface_is_physical(name: str) -> bool | None:
+    """Identify a physical NIC from Linux sysfs.
+
+    A real network device exposes a ``device`` symlink pointing to a PCI, USB
+    or platform device. Virtual devices (Docker/libvirt bridges, WireGuard,
+    veth pairs, loopback, ...) live under ``/sys/devices/virtual/net`` and have
+    no such link.
+
+    Returns ``True`` for a physical NIC, ``False`` for a virtual one and
+    ``None`` when sysfs cannot be consulted (non-Linux, container, missing
+    permissions), so that the caller can fall back to name heuristics.
+    """
+    try:
+        interface_dir = _SYSFS_NET_PATH / name
+        if not interface_dir.is_dir():
+            return None
+        if "virtual" in interface_dir.resolve().parts:
+            return False
+        return (interface_dir / "device").exists()
+    except (OSError, ValueError, RuntimeError):
+        return None
+
+
+def _classify_interface(name: str) -> tuple[bool, str, str]:
+    """Return ``(included, reason, kind)`` for an interface name."""
+    if name.lower() in {"lo", "loopback"}:
+        return False, "loopback interface", ""
+
+    name_is_virtual = _is_virtual_interface(name)
+    reason = _virtual_interface_reason(name) if name_is_virtual else ""
+
+    sysfs_kind = _sysfs_interface_is_physical(name)
+    if sysfs_kind is True:
+        # sysfs is authoritative: real hardware wins over an unusual name.
+        return True, "", "physical Ethernet/Wi-Fi interface (sysfs device)"
+    if sysfs_kind is False:
+        return False, reason or "virtual interface (no physical device in sysfs)", ""
+    if name_is_virtual:
+        return False, reason, ""
+    return True, "", "physical interface (name heuristic)"
 
 
 def _network_hosts_for_interface(ip: str, netmask: str) -> list[str]:
@@ -87,7 +179,7 @@ def _network_hosts_for_interface(ip: str, netmask: str) -> list[str]:
             return []
 
         network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
-        if network.prefixlen < 20:
+        if network.prefixlen < _MIN_NETWORK_PREFIXLEN:
             _LOGGER.debug("Skipping excessively large network: %s", network)
             return []
         return [str(host) for host in network.hosts()]
@@ -95,56 +187,192 @@ def _network_hosts_for_interface(ip: str, netmask: str) -> list[str]:
         return []
 
 
-def get_local_ip_ranges() -> list[str]:
-    """Retrieve IPv4 hosts on active, relevant local network interfaces."""
-    ips_to_scan: set[str] = set()
+def _process_interface(
+    info: _InterfaceInfo,
+    ips_to_scan: set[str],
+    decisions: list[_InterfaceDecision],
+) -> None:
+    """Apply the selection rules to one interface and record its decision."""
+    included, reason, kind = _classify_interface(info.name)
+    if not included:
+        decisions.append(_InterfaceDecision(info.name, False, reason))
+        return
+    if info.is_up is False:
+        decisions.append(_InterfaceDecision(info.name, False, "interface is down"))
+        return
+    if not info.ipv4:
+        decisions.append(_InterfaceDecision(info.name, False, "no IPv4 address"))
+        return
 
+    hosts: set[str] = set()
+    networks: list[str] = []
+    address = ""
+    for ip, netmask in info.ipv4:
+        if not ip or not netmask:
+            continue
+        address_hosts = _network_hosts_for_interface(ip, netmask)
+        if not address_hosts:
+            _LOGGER.debug(
+                "Ignoring unusable IPv4 address %s/%s on %s", ip, netmask, info.name
+            )
+            continue
+        network = ipaddress.IPv4Network(f"{ip}/{netmask}", strict=False)
+        hosts.update(address_hosts)
+        networks.append(str(network))
+        if not address:
+            address = f"{ip}/{netmask}"
+
+    if not hosts:
+        decisions.append(
+            _InterfaceDecision(
+                info.name,
+                False,
+                "no usable IPv4 network (loopback, link-local or too large)",
+            )
+        )
+        return
+
+    ips_to_scan.update(hosts)
+    decisions.append(
+        _InterfaceDecision(info.name, True, "", address, ", ".join(networks), kind)
+    )
+
+
+def _interfaces_from_psutil() -> list[_InterfaceInfo] | None:
+    """Collect interface information through psutil, when available."""
     try:
         import psutil
+    except Exception as err:
+        _LOGGER.debug("psutil unavailable: %s", err)
+        return None
 
+    try:
         interface_stats = psutil.net_if_stats()
-        for iface, addresses in psutil.net_if_addrs().items():
-            stats = interface_stats.get(iface)
-            if _is_virtual_interface(iface) or stats is None or not stats.isup:
-                continue
-            for address in addresses:
-                if address.family != socket.AF_INET:
-                    continue
-                if not address.address or not address.netmask:
-                    continue
-                ips_to_scan.update(
-                    _network_hosts_for_interface(address.address, address.netmask)
+        interfaces: list[_InterfaceInfo] = []
+        for name, addresses in psutil.net_if_addrs().items():
+            stats = interface_stats.get(name)
+            interfaces.append(
+                _InterfaceInfo(
+                    name=name,
+                    is_up=None if stats is None else bool(stats.isup),
+                    ipv4=[
+                        (address.address, address.netmask)
+                        for address in addresses
+                        if address.family == socket.AF_INET
+                        and address.address
+                        and address.netmask
+                    ],
                 )
+            )
+        return interfaces
     except Exception as err:
         _LOGGER.debug("psutil network discovery failed: %s", err)
+        return None
 
-    if not ips_to_scan:
-        try:
-            import netifaces
 
-            for iface in netifaces.interfaces():
-                if _is_virtual_interface(iface):
-                    continue
-                addrs = netifaces.ifaddresses(iface)
-                for address in addrs.get(netifaces.AF_INET, []):
-                    ip = address.get("addr")
-                    mask = address.get("netmask")
-                    if ip and mask:
-                        ips_to_scan.update(_network_hosts_for_interface(ip, mask))
-        except Exception as err:
-            _LOGGER.debug("netifaces discovery failed: %s", err)
+def _interfaces_from_netifaces() -> list[_InterfaceInfo] | None:
+    """Collect interface information through netifaces, when available."""
+    try:
+        import netifaces
+    except Exception as err:
+        _LOGGER.debug("netifaces unavailable: %s", err)
+        return None
 
-    if not ips_to_scan:
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-                sock.connect(("8.8.8.8", 80))
-                local_ip = sock.getsockname()[0]
-            ips_to_scan.update(
-                _network_hosts_for_interface(local_ip, "255.255.255.0")
+    try:
+        interfaces: list[_InterfaceInfo] = []
+        for name in netifaces.interfaces():
+            addresses = netifaces.ifaddresses(name).get(netifaces.AF_INET, [])
+            interfaces.append(
+                _InterfaceInfo(
+                    name=name,
+                    ipv4=[
+                        (address["addr"], address["netmask"])
+                        for address in addresses
+                        if address.get("addr") and address.get("netmask")
+                    ],
+                )
             )
-        except Exception as err:
-            _LOGGER.debug("Socket route fallback failed: %s", err)
+        return interfaces
+    except Exception as err:
+        _LOGGER.debug("netifaces discovery failed: %s", err)
+        return None
 
+
+def _add_route_fallback(
+    ips_to_scan: set[str], decisions: list[_InterfaceDecision]
+) -> None:
+    """Last resort when no interface exposes a usable IPv4 network."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            local_ip = sock.getsockname()[0]
+    except OSError as err:
+        _LOGGER.debug("Socket route fallback failed: %s", err)
+        return
+
+    hosts = _network_hosts_for_interface(local_ip, "255.255.255.0")
+    if not hosts:
+        return
+    ips_to_scan.update(hosts)
+    decisions.append(
+        _InterfaceDecision(
+            "default route (fallback)",
+            True,
+            "",
+            f"{local_ip}/24",
+            "default route /24",
+            "route fallback (no interface metadata)",
+        )
+    )
+
+
+def _log_interface_report(
+    decisions: list[_InterfaceDecision], address_count: int
+) -> None:
+    """Log every selection decision at DEBUG level, never at INFO."""
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+
+    _LOGGER.debug("Network interfaces detected:")
+    for decision in decisions:
+        if decision.included:
+            _LOGGER.debug("[INCLUDED] %s", decision.name)
+            _LOGGER.debug("  Address : %s", decision.address)
+            _LOGGER.debug("  Network : %s", decision.network)
+            _LOGGER.debug("  Type    : %s", decision.kind)
+        else:
+            _LOGGER.debug("[EXCLUDED] %s", decision.name)
+            _LOGGER.debug("  Reason  : %s", decision.reason)
+
+    included = sum(1 for decision in decisions if decision.included)
+    _LOGGER.debug("Summary:")
+    _LOGGER.debug("  Included interfaces : %d", included)
+    _LOGGER.debug("  Excluded interfaces : %d", len(decisions) - included)
+    _LOGGER.debug("  Addresses to scan   : %d", address_count)
+
+
+def get_local_ip_ranges() -> list[str]:
+    """Retrieve IPv4 hosts on active, physical local network interfaces."""
+    ips_to_scan: set[str] = set()
+    decisions: list[_InterfaceDecision] = []
+
+    interfaces = _interfaces_from_psutil()
+    if interfaces:
+        for info in interfaces:
+            _process_interface(info, ips_to_scan, decisions)
+
+    if not ips_to_scan:
+        decisions = []
+        interfaces = _interfaces_from_netifaces()
+        if interfaces:
+            for info in interfaces:
+                _process_interface(info, ips_to_scan, decisions)
+
+    if not ips_to_scan:
+        decisions = []
+        _add_route_fallback(ips_to_scan, decisions)
+
+    _log_interface_report(decisions, len(ips_to_scan))
     return sorted(ips_to_scan)
 
 
@@ -173,26 +401,45 @@ async def async_scan_network(
     timeout: float = DEFAULT_PORT_SCAN_TIMEOUT,
     progress_callback: Callable[[int, int], None] | None = None,
 ) -> list[str]:
-    """Scan a list of IP addresses for an open port without blocking."""
-    semaphore = asyncio.Semaphore(max_concurrent)
-    scanned_count = 0
+    """Scan a list of IP addresses for an open port without blocking.
+
+    A bounded pool of workers consumes the addresses instead of creating one
+    task per IP, which keeps memory and scheduling overhead predictable even
+    for large LANs. Results keep the order of ``ips``.
+    """
+    if not ips:
+        return []
+
+    pending: asyncio.Queue[str] = asyncio.Queue()
+    for target_ip in ips:
+        pending.put_nowait(target_ip)
+
     total_count = len(ips)
-    open_ips: list[str] = []
+    scanned_count = 0
+    open_ips: set[str] = set()
 
-    async def _worker(target_ip: str) -> None:
+    async def _worker() -> None:
         nonlocal scanned_count
-        async with semaphore:
-            is_open = await async_scan_port(target_ip, port=port, timeout=timeout)
-            if is_open:
-                open_ips.append(target_ip)
-            scanned_count += 1
-            if progress_callback:
-                progress_callback(scanned_count, total_count)
+        while True:
+            try:
+                target_ip = pending.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            try:
+                if await async_scan_port(target_ip, port=port, timeout=timeout):
+                    open_ips.add(target_ip)
+            except Exception as err:  # pragma: no cover - defensive guard
+                _LOGGER.debug("Port scan failed for %s: %s", target_ip, err)
+            finally:
+                scanned_count += 1
+                if progress_callback:
+                    progress_callback(scanned_count, total_count)
+                pending.task_done()
 
-    tasks = [asyncio.create_task(_worker(ip)) for ip in ips]
-    if tasks:
-        await asyncio.gather(*tasks, return_exceptions=True)
-    return open_ips
+    worker_count = max(1, min(max_concurrent, total_count))
+    workers = [asyncio.create_task(_worker()) for _ in range(worker_count)]
+    await asyncio.gather(*workers, return_exceptions=True)
+    return [ip for ip in ips if ip in open_ips]
 
 
 def _has_vigipool_http_signature(
