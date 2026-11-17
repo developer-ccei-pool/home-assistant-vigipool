@@ -72,6 +72,11 @@ DEVICE_MODELS: Final[dict[str, dict[str, str]]] = {
         "url": "https://www.ccei-pool.com/fr/produit/lynx-vp",
         "description": "Dosing dispenser",
     },
+    "tildrc": {
+        "model": "Tildrc",
+        "url": "https://www.ccei-pool.com/fr/gamme-vigipool",
+        "description": "Pool remote controller",
+    },
     "x312": {
         "model": "VigiBrio",
         "url": "https://www.ccei-pool.com/fr/produit/vigibrio",
@@ -106,3 +111,4 @@ MODE_OPTIONS_REVERSE_MAP: Final[dict[str, int]] = {
 }
 
 SIGNAL_VIGIPOOL_NEW_DEVICE: Final = "vigipool_new_device_{}"
+SIGNAL_VIGIPOOL_NEW_FIELD: Final = "vigipool_new_field_{}"

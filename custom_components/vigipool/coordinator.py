@@ -17,6 +17,7 @@ from .const import (
     INVALID_RAW_VALUES,
     MODE_OPTIONS_MAP,
     SIGNAL_VIGIPOOL_NEW_DEVICE,
+    SIGNAL_VIGIPOOL_NEW_FIELD,
     TEMP_ERROR_THRESHOLD,
     VIGIPOOL_TOPIC_REGEX,
 )
@@ -80,6 +81,10 @@ class VigipoolCoordinator:
 
         # Mapping: device_id -> { field_name -> parsed_value }
         self.data: dict[str, dict[str, Any]] = {}
+
+        # Couples (device_id, field_name) already received at least once.
+        # Used to create entities from topics actually published by devices.
+        self._seen_fields: set[tuple[str, str]] = set()
 
         # Listeners: device_id -> set of callbacks
         self._listeners: dict[str, set[Callable[[], None]]] = {}
@@ -223,6 +228,14 @@ class VigipoolCoordinator:
         if is_new_device:
             signal_name = SIGNAL_VIGIPOOL_NEW_DEVICE.format(self.entry.entry_id)
             async_dispatcher_send(self.hass, signal_name, device_id)
+
+        # If this MQTT field was never received for this device, dispatch a
+        # signal so entity platforms can create the matching entity. Only
+        # fields actually published by the equipment are advertised.
+        if (device_id, field_name) not in self._seen_fields:
+            self._seen_fields.add((device_id, field_name))
+            field_signal = SIGNAL_VIGIPOOL_NEW_FIELD.format(self.entry.entry_id)
+            async_dispatcher_send(self.hass, field_signal, device_id, field_name)
 
     def _parse_field_value(
         self, field_name: str, data_type: str, category: str, direction: str, raw: str

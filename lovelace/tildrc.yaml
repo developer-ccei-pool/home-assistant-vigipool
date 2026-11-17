@@ -1,0 +1,56 @@
+# Vue Tildrc (contrôleur distant de piscine)
+#
+# Le Tildrc publie ses topics sur le bus MQTT local mais ses capacités ne
+# sont pas figées dans cette intégration : les entités sont créées
+# AUTOMATIQUEMENT, et uniquement à partir des champs réellement reçus
+# (température, état filtration, RSSI, versions, ...).
+#
+# ▶ 1. Après avoir ajouté votre Tildrc, ouvrez
+#      Paramètres → Appareils et services → Entités, filtrez sur "Tildrc"
+#      et relevez les identifiants réellement créés.
+# ▶ 2. Décommentez et complétez les cartes ci-dessous avec ces identifiants.
+#
+# Ne sont listées ici que des possibilités cohérentes avec le protocole
+# Vigipool : aucune entité n'existera si l'appareil ne publie pas le champ.
+- title: Tildrc
+  path: tildrc
+  type: sections
+  max_columns: 2
+  sections:
+    - type: grid
+      cards:
+        - type: heading
+          heading: Mesures (selon topics publiés)
+        # Décommentez si votre Tildrc publie la température d'eau :
+        # - type: thermometer
+        #   entity: sensor.tildrc_water_temperature
+        #   min_value: 0
+        #   max_value: 40
+        - type: entities
+          entities:
+            # Décommentez les lignes correspondant à vos entités réelles :
+            # - entity: sensor.tildrc_water_temperature
+            #   name: Température d'eau
+            # - entity: binary_sensor.tildrc_filtration
+            #   name: Filtration
+            # - entity: sensor.tildrc_ph_value
+            #   name: pH
+            # - entity: sensor.tildrc_signal_strength
+            #   name: Signal radio
+            # - entity: sensor.tildrc_firmware_version
+            #   name: Version logicielle
+            # - entity: sensor.tildrc_serial_number
+            #   name: Numéro de série
+            - entity: sensor.ccei_vigipool_gateway_device_count
+              name: Équipements actifs (passerelle)
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Passerelle
+        - type: entities
+          entities:
+            - entity: binary_sensor.ccei_vigipool_gateway_connectivity
+              name: Connexion passerelle
+            - entity: sensor.ccei_vigipool_gateway_last_communication
+              name: Dernière communication

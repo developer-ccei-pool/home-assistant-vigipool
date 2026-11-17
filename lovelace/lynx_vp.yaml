@@ -1,0 +1,41 @@
+# Vue Lynx VP (distributeur de produit de traitement)
+# Entités : détection d'injection en temps réel (binary sensor) et volumes
+# injectés (24 h et cumulé). Le Lynx VP n'expose pas de consigne réglable :
+# aucune commande n'est proposée ici.
+- title: Lynx VP
+  path: lynx-vp
+  type: sections
+  max_columns: 2
+  sections:
+    - type: grid
+      cards:
+        - type: heading
+          heading: Distribution
+        - type: entity
+          entity: binary_sensor.lynx_vp_injecting_product
+          name: Injection en cours
+        - type: gauge
+          entity: sensor.lynx_vp_injected_volume_24h
+          name: Volume injecté (24 h)
+          unit: L
+          min: 0
+          max: 20
+        - type: entities
+          entities:
+            - entity: sensor.lynx_vp_total_injected_volume
+              name: Volume cumulé
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Historique (24 h)
+        - type: history-graph
+          title: Volume injecté 24 h
+          hours_to_show: 24
+          entities:
+            - entity: sensor.lynx_vp_injected_volume_24h
+        - type: history-graph
+          title: Injection
+          hours_to_show: 24
+          entities:
+            - entity: binary_sensor.lynx_vp_injecting_product

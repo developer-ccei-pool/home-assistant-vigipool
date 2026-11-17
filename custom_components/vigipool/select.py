@@ -62,7 +62,7 @@ SELECT_DESCRIPTIONS: tuple[VigipoolSelectEntityDescription, ...] = (
         name="Filtration Mode",
         translation_key="filtration_mode",
         options=STANDARD_MODE_OPTIONS,
-        supported_prefixes=("anteam",),
+        supported_prefixes=("anteam", "anteavs"),
     ),
     VigipoolSelectEntityDescription(
         key="light_mode",

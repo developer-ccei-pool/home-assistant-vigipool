@@ -21,8 +21,9 @@ Cette intégration communique **directement en local** avec le serveur MQTT héb
 6. [Ajout de l'intégration dans Home Assistant](#6-ajout-de-lintégration-dans-home-assistant)
 7. [Découverte automatique des équipements](#7-découverte-automatique-des-équipements)
 8. [Configuration & Options](#8-configuration--options)
-9. [Limitations connues](#9-limitations-connues)
-10. [Dépannage & Diagnostic](#10-dépannage--diagnostic)
+9. [Interfaces Lovelace](#9-interfaces-lovelace)
+10. [Limitations connues](#10-limitations-connues)
+11. [Dépannage & Diagnostic](#11-dépannage--diagnostic)
 
 ---
 
@@ -52,6 +53,7 @@ L'intégration Home Assistant Vigipool se connecte directement au bus local MQTT
 | `anteaox` | **AnteaOX** | Émetteur de mesure ORP | Mesure ORP (mV), capteur de débit d'eau |
 | `anteavs` | **AnteaVS** | Contrôleur pour pompe à vitesse variable | Vitesse de rotation, sélection du mode de filtration |
 | `lynx` | **Lynx VP** | Distributeur de produit de traitement | Détection d'injection en temps réel, volumes injectés (24h et total) |
+| `tildrc` | **Tildrc** | Contrôleur distant de piscine | Entités créées automatiquement à partir des topics réellement publiés par l'appareil (mesures, états, diagnostic) |
 | `x312` | **VigiBrio** | Contrôleur d'éclairage LED RGB | Allumage/extinction, luminosité (0-100%), sélection des 15 ambiances lumineuses CCEI, vitesse d'effet, minuterie d'éclairage |
 | `vigiwatt` | **VigiW@tt** | Moniteur d'énergie électrique | Puissance instantanée (W), tension (V), courant (A), fréquence (Hz), facteur de puissance (%), consommation |
 | `vigipool` | **Passerelle Vigipool** | Hub / Passerelle de communication | État de la connexion locale, nombre d'équipements actifs, horodatage de dernière réception |
@@ -153,7 +155,31 @@ Si vous changez manuellement votre réseau, vous pouvez modifier l'adresse IP à
 
 ---
 
-## 9. Limitations connues
+## 9. Interfaces Lovelace
+
+Des vues prêtes à l'emploi, une par modèle, sont fournies dans le dossier
+[`lovelace/`](lovelace/) :
+
+| Vue | Modèle |
+|---|---|
+| [`lovelace/tild_vp.yaml`](lovelace/tild_vp.yaml) | Vue synthétique **Tild VP** : température d'eau, filtration, éclairage, sortie auxiliaire, signal radio |
+| [`lovelace/vigiwatt.yaml`](lovelace/vigiwatt.yaml) | **VigiW@tt** : puissance, tension, courant, fréquence, facteur de puissance + historiques |
+| [`lovelace/lynx_vp.yaml`](lovelace/lynx_vp.yaml) | **Lynx VP** : injection en cours, volumes injectés 24 h et cumulés |
+| [`lovelace/tildrc.yaml`](lovelace/tildrc.yaml) | **Tildrc** : gabarit à compléter selon les entités créées automatiquement |
+
+Ces vues n'utilisent que des **cartes standard Home Assistant** et ne touchent
+jamais à votre tableau de bord existant : consultez
+[`lovelace/README.md`](lovelace/README.md) pour les ajouter en deux minutes.
+
+Par ailleurs, pour les appareils dont les capacités ne sont pas figées
+(**Tildrc** notamment), l'intégration crée **automatiquement** les capteurs
+correspondant aux champs réellement publiés sur le bus MQTT : rien n'est
+inventé, et aucune commande n'est proposée pour un fonctionnement non
+documenté.
+
+---
+
+## 10. Limitations connues
 
 - **Accès réseau local direct** : L'intégration communique en direct via MQTT local. Les équipements doivent être joignables sur le port `1883`.
 - **Mises à jour de microprogramme via l'application mobile** : Lorsque vous effectuez une mise à jour logicielle (*firmware update*) d'un appareil Vigipool depuis l'application mobile officielle en Bluetooth ou Wi-Fi direct, la connexion MQTT locale est temporairement suspendue par l'appareil. Dès la fin de la mise à jour, l'intégration se reconnecte automatiquement.
@@ -161,7 +187,7 @@ Si vous changez manuellement votre réseau, vous pouvez modifier l'adresse IP à
 
 ---
 
-## 10. Dépannage & Diagnostic
+## 11. Dépannage & Diagnostic
 
 ### Télécharger les diagnostics
 

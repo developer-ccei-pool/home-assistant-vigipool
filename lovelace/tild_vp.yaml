@@ -1,0 +1,49 @@
+# Vue synthétique Tild VP (coffret filtration + éclairage)
+# Entités : température d'eau, filtration (switch), éclairage (light),
+# sortie auxiliaire (switch), RSSI. Aucune commande fictive : le Tild VP
+# n'expose pas de consigne de température, donc pas de carte climate.
+- title: Tild VP
+  path: tild-vp
+  type: sections
+  max_columns: 2
+  sections:
+    - type: grid
+      cards:
+        - type: heading
+          heading: Eau
+        - type: thermometer
+          entity: sensor.tild_vp_water_temperature
+          min_value: 0
+          max_value: 40
+        - type: entities
+          entities:
+            - entity: switch.tild_vp_filtration
+              name: Filtration
+        - type: history-graph
+          title: Température (24 h)
+          hours_to_show: 24
+          entities:
+            - entity: sensor.tild_vp_water_temperature
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Éclairage & auxiliaires
+        - type: light
+          entity: light.tild_vp_light
+          name: Projecteur piscine
+        - type: entities
+          entities:
+            - entity: switch.tild_vp_auxiliary_output
+              name: Sortie auxiliaire
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Diagnostic
+        - type: entities
+          entities:
+            - entity: sensor.tild_vp_signal_strength
+              name: Signal radio
+            - entity: sensor.tild_vp_serial_number
+              name: Numéro de série

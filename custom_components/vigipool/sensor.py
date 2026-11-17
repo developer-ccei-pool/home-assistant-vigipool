@@ -25,6 +25,7 @@ try:
         UnitOfVolume,
     )
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers import entity_registry as er
     from homeassistant.helpers.dispatcher import async_dispatcher_connect
     from homeassistant.helpers.entity import EntityCategory
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -38,6 +39,7 @@ except ImportError:
         native_unit_of_measurement: str | None = None
         device_class: Any | None = None
         state_class: Any | None = None
+        icon: str | None = None
         entity_category: Any | None = None
 
     class SensorDeviceClass:
@@ -69,12 +71,27 @@ except ImportError:
     UnitOfTime = type("UnitOfTime", (), {"MINUTES": "min"})
 
     class SensorEntity:
-        pass
+        @property
+        def native_unit_of_measurement(self):
+            return self.entity_description.native_unit_of_measurement
+
+        @property
+        def device_class(self):
+            return self.entity_description.device_class
+
+    er = None
 
     async_dispatcher_connect = lambda *args: None
 
-from .const import DOMAIN, SIGNAL_VIGIPOOL_NEW_DEVICE
+from .capabilities import (
+    entity_payload,
+    field_already_covered,
+    is_metadata_field,
+    spec_for_field,
+)
+from .const import DOMAIN, SIGNAL_VIGIPOOL_NEW_DEVICE, SIGNAL_VIGIPOOL_NEW_FIELD
 from .coordinator import VigipoolCoordinator
+from .discovery import DiscoveredDevice
 from .entity import VigipoolBaseEntity, VigipoolHubBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -330,7 +347,45 @@ async def async_setup_entry(
                     new_entities.append(
                         VigipoolSensor(coordinator, device_id, description)
                     )
+
+        # Sensors built from fields actually received over MQTT. This covers
+        # models with no static description (e.g. Tildrc) without inventing
+        # entities for data that is never published.
+        for field_name in coordinator.data.get(device_id, {}):
+            entity = _dynamic_sensor_for(device_id, device, field_name)
+            if entity is not None:
+                new_entities.append(entity)
         return new_entities
+
+    def _dynamic_sensor_for(
+        device_id: str, device: DiscoveredDevice, field_name: str
+    ) -> VigipoolSensor | None:
+        """Build a read-only sensor for a field really received via MQTT."""
+        if is_metadata_field(field_name) or field_already_covered(
+            device.prefix, field_name
+        ):
+            return None
+        spec = spec_for_field(field_name)
+        if spec is None or spec.platform != "sensor":
+            return None
+        entity_uid = f"{device_id}_{field_name}"
+        if entity_uid in created_entity_ids:
+            return None
+        registry = er.async_get(hass) if er is not None else None
+        if registry is not None and registry.async_get_entity_id(
+            "sensor", DOMAIN, entity_uid
+        ):
+            # Entity already exists in Home Assistant: never duplicate it.
+            created_entity_ids.add(entity_uid)
+            return None
+        created_entity_ids.add(entity_uid)
+        description = VigipoolSensorEntityDescription(
+            key=field_name,
+            data_field=field_name,
+            supported_prefixes=(device.prefix,),
+            **entity_payload(spec),
+        )
+        return VigipoolSensor(coordinator, device_id, description)
 
     # Add Hub diagnostics
     hub_entities: list[SensorEntity] = [
@@ -353,10 +408,27 @@ async def async_setup_entry(
         if entities:
             async_add_entities(entities)
 
+    # Listen for MQTT fields seen for the first time on a known device, to
+    # create the matching sensor at runtime (only for documented capabilities).
+    def _on_new_field(device_id: str, field_name: str) -> None:
+        device = coordinator.devices.get(device_id)
+        if not device:
+            return
+        entity = _dynamic_sensor_for(device_id, device, field_name)
+        if entity is not None:
+            async_add_entities([entity])
+
     entry.async_on_unload(
         async_dispatcher_connect(
             hass,
             SIGNAL_VIGIPOOL_NEW_DEVICE.format(entry.entry_id),
             _on_new_device,
+        )
+    )
+    entry.async_on_unload(
+        async_dispatcher_connect(
+            hass,
+            SIGNAL_VIGIPOOL_NEW_FIELD.format(entry.entry_id),
+            _on_new_field,
         )
     )

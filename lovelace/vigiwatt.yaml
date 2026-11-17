@@ -1,0 +1,48 @@
+# Vue VigiW@tt (moniteur d'énergie électrique)
+# Entités : puissance active, tension, courant, fréquence, facteur de
+# puissance. Le VigiW@tt ne publie pas de compteur d'énergie cumulée sur le
+# bus local : aucune carte "énergie" n'est donc proposée.
+- title: VigiW@tt
+  path: vigiwatt
+  type: sections
+  max_columns: 2
+  sections:
+    - type: grid
+      cards:
+        - type: heading
+          heading: Mesures instantanées
+        - type: gauge
+          entity: sensor.vigiwatt_power
+          name: Puissance active
+          unit: W
+          min: 0
+          max: 4000
+          severity:
+            green: 0
+            yellow: 2500
+            red: 3500
+        - type: entities
+          entities:
+            - entity: sensor.vigiwatt_voltage
+              name: Tension
+            - entity: sensor.vigiwatt_current
+              name: Courant
+            - entity: sensor.vigiwatt_frequency
+              name: Fréquence
+            - entity: sensor.vigiwatt_power_factor
+              name: Facteur de puissance
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Historique (24 h)
+        - type: history-graph
+          title: Puissance
+          hours_to_show: 24
+          entities:
+            - entity: sensor.vigiwatt_power
+        - type: history-graph
+          title: Tension
+          hours_to_show: 24
+          entities:
+            - entity: sensor.vigiwatt_voltage
