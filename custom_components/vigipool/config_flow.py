@@ -49,7 +49,7 @@ except ImportError:
                 return kwargs
             def async_abort(self, **kwargs):
                 return kwargs
-            async def _abort_if_unique_id_configured(self, updates=None):
+            def _abort_if_unique_id_configured(self, updates=None):
                 pass
             async def async_set_unique_id(self, uid):
                 self.unique_id = uid
@@ -152,7 +152,7 @@ class VigipoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if broker:
                 unique_id = broker.primary_device_id or broker.ip
                 await self.async_set_unique_id(unique_id)
-                await self._abort_if_unique_id_configured()
+                self._abort_if_unique_id_configured()
                 return self.async_create_entry(
                     title=broker.display_name,
                     data={
@@ -197,7 +197,7 @@ class VigipoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 unique_id = broker.primary_device_id or host
                 await self.async_set_unique_id(unique_id)
-                await self._abort_if_unique_id_configured()
+                self._abort_if_unique_id_configured()
                 return self.async_create_entry(
                     title=broker.display_name,
                     data={
